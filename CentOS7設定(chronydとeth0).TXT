@@ -1,0 +1,60 @@
+■新しいサービス
+
+(1)chronyd
+  新しいNTPサービス。
+
+  設定ファイル: /etc/chrony.conf 
+　serverのオプションの中でiburstオプションは付けておく方がメリットのあるものである。
+  chronydはiburstオプションの付いたNTPサーバに対して、起動直後に短い間隔で4回問い合わせをする（ntpdのiburstは8回）。
+  NTPサーバの妥当性の判断には1回の問い合わせだけでは足りず数回を要するのだが、起動直後に4度問い合わせをすることに
+  よって妥当性判断が早く済み、結果として起動から時刻同期が行われるまでの時間が短くなる。
+
+
+■NICの名前をeth0に変更する。
+(1)カーネルパラメータの変更
+  CentOS7からの新しいNIC命名方式を無効化するために、OSが起動する際に読み込むカーネルパラメータとして
+ 「net.ifnames=0」と「biosdevname=0」を追加します。
+ 
+ CentOS7からはブートローダが「GRUB2」に変更されたため、まずは「/etc/default/grub」を編集し、
+ それをもとに「grub2-mkconfig」コマンドで「/boot/grub2/grub.cfg」を作成するという手順になります。
+
+(2)/etc/default/grub 編集
+  「/etc/default/grub」ファイルの「GRUB_CMDLINE_LINUX」変数部分に、OS起動時に読み込むカーネルパラーメータとして
+  「biosdevname=0」と「net.ifnames=0」を追加していきます。
+
+  rootユーザになって以下を実行します。
+  # cd /etc/default
+  # cp -p grub grub_yyyymmdd   → バックアップ
+  # vi grub
+
+  編集前:GRUB_CMDLINE_LINUX="rd.lvm.lv=centos/root rd.lvm.lv=centos/swap rhgb quiet"
+  編集後:GRUB_CMDLINE_LINUX="rd.lvm.lv=centos/root rd.lvm.lv=centos/swap rhgb quiet biosdevname=0 net.ifnames=0"
+
+(3)/boot/grub2/grub.cfg 作成
+  編集が終わった「/etc/default/grub」をもとに、「grub2-mkconfig」コマンドを使用して
+  「/boot/grub2/grub.cfg」ファイルを作成します。
+
+  # cp -p /boot/grub2/grub.cfg /boot/grub2/grub.cfg_yyyymmdd  → バックアップ
+  # grub2-mkconfig -o /boot/grub2/grub.cfg
+
+  ※「UEFI」環境では「grub.cfg」の場所が異なるので注意してください。
+
+  # grub2-mkconfig -o /boot/efi/EFI/centos/grub.cfg  → 参考
+
+(4)NIC設定ファイルの名前変更
+  名前変更を行いたいNICの設定ファイル名を「ifcfg-eth0」に変更します。
+
+  私の環境ではNICの名前が「ens33」だったので、設定ファイル名は「ifcfg-ens33」でしたが、
+  環境によってことなると思いますので環境にあわせて適宜読み替えてください。
+
+  # cd /etc/sysconfig/network-scripts
+  # mv ifcfg-ens33 ifcfg-eth0
+
+(5)設定変更
+  # vi ifcfg-eth0
+
+  変更前:DEVICE=ens33
+  変更後:DEVICE=eth0
+
+(6)サーバ再起動
+  # shutdown -r now
